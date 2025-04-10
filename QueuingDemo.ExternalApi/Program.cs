@@ -7,7 +7,7 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Services.AddControllers();
-        builder.Services.AddSingleton(new ItemRepository(builder.Configuration.GetConnectionString("DefaultConnection")));
+        builder.Services.AddSingleton<ItemsRepository>();
         builder.Services.AddHostedService<TimedHostedService>();
 
         var app = builder.Build();

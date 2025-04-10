@@ -22,22 +22,9 @@ public class ApiService
          return await response.Content.ReadAsStringAsync(cancellationToken);
     }
 
-    public async Task DeleteItemAsync(string value, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteItemAsync(string value, CancellationToken cancellationToken = default)
     {
-       await _httpClient.DeleteAsync($"{_httpClient.BaseAddress}/{value}");
+        HttpResponseMessage  response =  await _httpClient.DeleteAsync($"{_httpClient.BaseAddress}/{value}", cancellationToken);
+        return response.IsSuccessStatusCode;
     }
-
-    public async Task<IList<string>> GetItemsAsync()
-    {
-        var response = await _httpClient.GetAsync("");
-
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync();
-
-        var items = JsonSerializer.Deserialize<List<string>>(json);
-
-        return items ?? new List<string>();
-    }
-
 }

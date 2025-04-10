@@ -1,0 +1,34 @@
+﻿USE [Consumer]
+GO
+
+/****** Object:  Table [dbo].[Items]    Script Date: 10/04/2025 17:30:15 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[Items](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Value] [nvarchar](6) NOT NULL,
+	[Attempts] [int] NOT NULL,
+	[Lock] [uniqueidentifier] NULL,
+	[IsProcessing] [bit] NOT NULL,
+ CONSTRAINT [PK_Items] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY],
+UNIQUE NONCLUSTERED 
+(
+	[Value] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[Items] ADD  CONSTRAINT [DF_Items_Attempts]  DEFAULT ((0)) FOR [Attempts]
+GO
+
+ALTER TABLE [dbo].[Items] ADD  CONSTRAINT [DF_Items_IsProcessing]  DEFAULT ((0)) FOR [IsProcessing]
+GO
+
+

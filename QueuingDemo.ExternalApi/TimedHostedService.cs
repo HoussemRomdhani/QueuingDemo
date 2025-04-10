@@ -2,10 +2,10 @@
 
 public class TimedHostedService : IHostedService, IDisposable
 {
-    private readonly ItemRepository itemRepository;
+    private readonly ItemsRepository itemRepository;
     private readonly ILogger<TimedHostedService> logger;
     private Timer? timer;
-    public TimedHostedService(ItemRepository itemRepository, ILogger<TimedHostedService> logger)
+    public TimedHostedService(ItemsRepository itemRepository, ILogger<TimedHostedService> logger)
     {
         this.itemRepository = itemRepository;
         this.logger = logger;
@@ -15,8 +15,7 @@ public class TimedHostedService : IHostedService, IDisposable
     {
         logger.LogInformation("Timed Hosted Service is starting.");
 
-        // Set the timer to run every 5 seconds (5000 ms)
-        timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
 
         return Task.CompletedTask;
     }
@@ -26,7 +25,6 @@ public class TimedHostedService : IHostedService, IDisposable
         logger.LogInformation("Timed Hosted Service is working. {Time}", DateTimeOffset.Now);
         try
         {
-
             string value = GenerateRandomAlphanumeric();
             await itemRepository.CreateAsync(value);
         }
@@ -47,7 +45,6 @@ public class TimedHostedService : IHostedService, IDisposable
     {
         logger.LogInformation("Timed Hosted Service is stopping.");
 
-        // Dispose of the timer
         timer?.Change(Timeout.Infinite, 0);
 
         return Task.CompletedTask;
