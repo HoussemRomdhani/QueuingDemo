@@ -6,8 +6,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QueuingDemo.Logic", "Queuin
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QueuingDemo.ExternalApi", "QueuingDemo.ExternalApi\QueuingDemo.ExternalApi.csproj", "{DDADD7A6-0D74-45B9-8111-F1B172C528E5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QueuingDemo.ConsoleClient", "QueuingDemo.ConsoleClient\QueuingDemo.ConsoleClient.csproj", "{DE8297CC-47E9-46BE-9539-425BA7E14B1F}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
 	ProjectSection(SolutionItems) = preProject
 		Consumer.sql = Consumer.sql
@@ -30,10 +28,6 @@ Global
 		{DDADD7A6-0D74-45B9-8111-F1B172C528E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DDADD7A6-0D74-45B9-8111-F1B172C528E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DDADD7A6-0D74-45B9-8111-F1B172C528E5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DE8297CC-47E9-46BE-9539-425BA7E14B1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DE8297CC-47E9-46BE-9539-425BA7E14B1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DE8297CC-47E9-46BE-9539-425BA7E14B1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DE8297CC-47E9-46BE-9539-425BA7E14B1F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{706A8BDE-02EF-4EF4-89AF-3F2A23D39FD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{706A8BDE-02EF-4EF4-89AF-3F2A23D39FD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{706A8BDE-02EF-4EF4-89AF-3F2A23D39FD7}.Release|Any CPU.ActiveCfg = Release|Any CPU

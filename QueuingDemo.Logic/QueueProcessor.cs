@@ -1,17 +1,32 @@
 ﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using QueuingDemo.Logic.Models;
+using QueuingDemo.Logic.Settings;
+using System.Diagnostics;
 namespace QueuingDemo.Logic;
+
 
 public class QueueProcessor
 {
     private readonly ApiService apiService;
     private readonly ItemsRepository itemRepository;
+    private readonly IOptionsMonitor<ClientSettings> clientSettings;
     private readonly ILogger<QueueProcessor> logger;
     private readonly SemaphoreSlim semaphore = new(1, 1);
-    public QueueProcessor(ApiService apiService, ItemsRepository itemRepository, ILogger<QueueProcessor> logger)
+    public QueueProcessor(ApiService apiService, ItemsRepository itemRepository, IOptionsMonitor<ClientSettings> clientSettings, ILogger<QueueProcessor> logger)
     {
         this.apiService = apiService;
         this.itemRepository = itemRepository;
+        this.clientSettings = clientSettings;
         this.logger = logger;
+    }
+
+    void LogColored(string message, ConsoleColor color)
+    {
+        var originalColor = Console.ForegroundColor;
+        Console.ForegroundColor = color;
+        Console.WriteLine(message);
+        Console.ForegroundColor = originalColor;
     }
 
     public async Task ProcessAsync(CancellationToken cancellationToken = default)
@@ -24,33 +39,59 @@ public class QueueProcessor
         {
             locked = await semaphore.WaitAsync(Timeout.Infinite, cancellationToken);
 
-            string value = await GetItemAsync(cancellationToken);
+            string? value = await apiService.GetItemAsync(cancellationToken);
 
-            logger.LogInformation("[{taskId}] Working on item : {value}", taskId, value);
-
-            if (string.Empty.Equals(value.Trim()))
+            if (value == null)
             {
-                await apiService.DeleteItemAsync(value, cancellationToken);
-                logger.LogInformation("[{taskId}] Work finished on item : EMPTY", taskId);
+                return;
+            }
+
+            bool success = await itemRepository.InsertAndLockItemIfNewOrIncrementAttemptsAsync(value, taskId, cancellationToken);
+
+            if (!success)
+            {
+                return;
+            }
+
+            var itemAttempts = await itemRepository.GetItemAttemptsAsync(value, taskId, cancellationToken);
+
+            if (itemAttempts != null)
+            {
+                int maxAttempts = clientSettings.CurrentValue.MaxAttempts;
+
+                clientSettings.OnChange(options =>
+                {
+                    maxAttempts = options.MaxAttempts;
+                });
+
+                if (itemAttempts.Attempts > maxAttempts)
+                {
+                    bool deletedFromExternal = await apiService.DeleteItemAsync(value, cancellationToken);
+                    if (deletedFromExternal)
+                    {
+                        await itemRepository.DeleteItemAttemptsAsync(value, cancellationToken);
+                    }
+                }
+                else
+                {
+                    bool precessed = await ProcessItemAsync(value, itemAttempts.Attempts, cancellationToken);
+
+                    if (precessed)
+                    {
+                        bool deletedFromExternal = await apiService.DeleteItemAsync(value, cancellationToken);
+
+                        if (deletedFromExternal)
+                        {
+                            await itemRepository.DeleteItemAttemptsAsync(value, cancellationToken);
+                        }
+                    }
+                }
+
+                await itemRepository.DeleteItemAsync(value, taskId, cancellationToken);
             }
             else
             {
-                Result done = Result.Fail;
-
-                while (done == Result.Fail)
-                {
-                    done = await itemRepository.ProcessItemAsync(value, taskId, Process, apiService.DeleteItemAsync, 5, cancellationToken);
-                }
-
-                if (done == Result.Success)
-                {
-                    logger.LogInformation("[{taskId}] Work finished on item : {value}", taskId, value);
-                }
-
-                if (done == Result.Ignore)
-                {
-                    logger.LogInformation("[{taskId}] Work ignored on item : {value}", taskId, value);
-                }
+                logger.LogCritical("[{taskId}] was locked : {value}", taskId, value);
             }
         }
         catch (Exception e)
@@ -66,23 +107,52 @@ public class QueueProcessor
         }
     }
 
-    private async Task<string> GetItemAsync(CancellationToken cancellationToken)
+    private async Task<bool> ProcessItemAsync(string value, int attempt, CancellationToken cancellationToken)
     {
-        string? item = await apiService.GetItemAsync(cancellationToken);
+        ProcessingIntervalMilliseconds processingIntervalMilliseconds = clientSettings.CurrentValue.ProcessingIntervalMilliseconds;
+       
+        int processedSuccessfullyPercentage = clientSettings.CurrentValue.ProcessedSuccessfullyPercentage;
 
-        if (item != null)
+        clientSettings.OnChange(options =>
         {
-            return item;
+            processingIntervalMilliseconds = options.ProcessingIntervalMilliseconds;
+            processedSuccessfullyPercentage = options.ProcessedSuccessfullyPercentage;
+        });
+
+        int totalProcessingTimeMs = new Random().Next(processingIntervalMilliseconds.Min, processingIntervalMilliseconds.Max);  // 10 seconds (total time for the operation)
+
+        var stopwatch = Stopwatch.StartNew();
+
+        logger.LogInformation("▶️ Processing started - Attempt N° {attempt} : {value}", attempt, value);
+
+        while (stopwatch.ElapsedMilliseconds < totalProcessingTimeMs)
+        {
+            double elapsedMs = stopwatch.ElapsedMilliseconds;
+            int progressPercentage = (int)((elapsedMs / totalProcessingTimeMs) * 100);
+
+            progressPercentage = Math.Min(progressPercentage, 100);
+
+            logger.LogTrace("⏳ Processing {value} ... {progressPercentage}%", value, progressPercentage);
+
+            await Task.Delay(1000, cancellationToken);
         }
 
-        await Task.Delay(3000, cancellationToken);
+        int random = new Random().Next(100);
 
-        return await GetItemAsync(cancellationToken);
+        bool result = random < processedSuccessfullyPercentage ? await Task.FromResult(true) : await Task.FromResult(false);
+
+        if (result)
+        {
+            logger.LogInformation("✅ Processing completed successfully - Attempt N° {attempt} : {value}", attempt, value);
+        }
+        else
+        {
+            logger.LogWarning("⚠️ Processing failed -  Attempt N° {attempt} : {value}", attempt, value);
+        }
+
+        stopwatch.Stop();
+        return result;
     }
 
-    private async Task<bool> Process(string value, CancellationToken cancellationToken)
-    {
-        await Task.Delay(new Random().Next(500, 10000), cancellationToken);
-        return await Task.FromResult(new Random().Next(100) <= 40);
-    }
+    public async Task CleanWorkingData() => await itemRepository.CleanWorkingData();
 }

@@ -1,13 +1,17 @@
-﻿namespace QueuingDemo.ExternalApi;
+﻿using Microsoft.Extensions.Options;
 
-public class TimedHostedService : IHostedService, IDisposable
+namespace QueuingDemo.ExternalApi;
+
+public class HostedService : IHostedService, IDisposable
 {
     private readonly ItemsRepository itemRepository;
-    private readonly ILogger<TimedHostedService> logger;
+    private readonly IOptionsMonitor<ApiSettings> apiSettings;
+    private readonly ILogger<HostedService> logger;
     private Timer? timer;
-    public TimedHostedService(ItemsRepository itemRepository, ILogger<TimedHostedService> logger)
+    public HostedService(ItemsRepository itemRepository, IOptionsMonitor<ApiSettings> apiSettings, ILogger<HostedService> logger)
     {
         this.itemRepository = itemRepository;
+        this.apiSettings = apiSettings;
         this.logger = logger;
     }
 
@@ -15,7 +19,19 @@ public class TimedHostedService : IHostedService, IDisposable
     {
         logger.LogInformation("Timed Hosted Service is starting.");
 
-        timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+        timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(apiSettings.CurrentValue.ItemCreationIntervalSeconds));
+
+        // React to config changes
+        apiSettings.OnChange(settings =>
+        {
+            logger.LogInformation("Configuration changed. New interval: {Interval} seconds", settings.ItemCreationIntervalSeconds);
+
+            // Change timer interval on the fly
+            timer?.Change(
+                TimeSpan.Zero,
+                TimeSpan.FromSeconds(settings.ItemCreationIntervalSeconds)
+            );
+        });
 
         return Task.CompletedTask;
     }

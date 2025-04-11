@@ -1,6 +1,6 @@
 ﻿using QueuingDemo.Logic;
 
-public class HostedService : IHostedService
+public class HostedService : BackgroundService
 {
     private readonly ILogger<HostedService> logger;
     private readonly QueueProcessor processor;
@@ -10,20 +10,26 @@ public class HostedService : IHostedService
         this.logger = logger;
     }
 
-    public async Task StartAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Consumer Hosted Service is starting");
+        logger.LogInformation("🚀 Consumer Hosted Service is starting");
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(5000, stoppingToken);
-            await  processor.ProcessAsync(stoppingToken);
+             await processor.ProcessAsync(stoppingToken);
         }
+
+        logger.LogError("🛑 QueueWorker is stopping, cleaning up...");
+        
+        await processor.CleanWorkingData();
     }
 
-    public Task StopAsync(CancellationToken stoppingToken)
+    public override async Task StopAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Timed Hosted Service is stopping.");
-        return Task.CompletedTask;
+        logger.LogError("🛑 QueueWorker is stopping, cleaning up...");
+     
+        await processor.CleanWorkingData();
+       
+        await base.StopAsync(stoppingToken);
     }
 }

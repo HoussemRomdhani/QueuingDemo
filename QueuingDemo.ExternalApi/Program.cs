@@ -7,8 +7,9 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Services.AddControllers();
+        builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
         builder.Services.AddSingleton<ItemsRepository>();
-        builder.Services.AddHostedService<TimedHostedService>();
+        builder.Services.AddHostedService<HostedService>();
 
         var app = builder.Build();
 
