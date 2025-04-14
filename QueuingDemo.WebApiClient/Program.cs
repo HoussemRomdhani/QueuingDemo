@@ -15,15 +15,21 @@ builder.Logging.AddProvider(new ColorConsoleLoggerProvider());
 
 builder.Services.Configure<ClientSettings>(builder.Configuration.GetSection("ClientSettings"));
 
-var infiniteRetryPolicy = Policy.HandleResult<HttpResponseMessage>(response => response.RequestMessage != null && response.RequestMessage.Method == HttpMethod.Get &&
-                                                                               !response.IsSuccessStatusCode)
-                                 .WaitAndRetryForeverAsync(retryAttempt => TimeSpan.FromSeconds(3));
 
 builder.Services.AddHttpClient<ApiService>((serviceProvider, client) =>
 {
     var clientSettings = serviceProvider.GetRequiredService<IOptions<ClientSettings>>().Value;
     client.BaseAddress = new Uri(clientSettings.ApiServiceBaseAddress);
-}).AddPolicyHandler(infiniteRetryPolicy);
+})
+.AddPolicyHandler((serviceProvider, request) =>
+{
+    var clientSettings = serviceProvider.GetRequiredService<IOptions<ClientSettings>>().Value;
+ 
+    return Policy
+        .HandleResult<HttpResponseMessage>(response => response.RequestMessage != null &&
+                      response.RequestMessage.Method == HttpMethod.Get && !response.IsSuccessStatusCode)
+        .RetryAsync(clientSettings.NotFoundWaitTimeMilliseconds);
+});
 
 
 builder.Services.AddSingleton<QueueProcessor>();
